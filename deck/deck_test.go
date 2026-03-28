@@ -152,6 +152,160 @@ func TestOrganize(t *testing.T) {
 	}
 }
 
+func TestDeckColorsWUBRGOrder(t *testing.T) {
+	cards := map[string]*scryfall.Card{
+		"CardG": {Colors: []string{"G"}},
+		"CardW": {Colors: []string{"W"}},
+		"CardR": {Colors: []string{"R"}},
+	}
+	entries := []parser.CardEntry{
+		{Quantity: 1, Name: "CardG"},
+		{Quantity: 1, Name: "CardW"},
+		{Quantity: 1, Name: "CardR"},
+	}
+	got := deckColors(entries, cards)
+	want := []string{"W", "R", "G"}
+	if len(got) != len(want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("index %d: expected %s, got %s", i, want[i], got[i])
+		}
+	}
+}
+
+func TestDeckColorsFiveColor(t *testing.T) {
+	cards := map[string]*scryfall.Card{
+		"Card1": {Colors: []string{"R", "G"}},
+		"Card2": {Colors: []string{"W", "U", "B"}},
+	}
+	entries := []parser.CardEntry{
+		{Quantity: 1, Name: "Card1"},
+		{Quantity: 1, Name: "Card2"},
+	}
+	got := deckColors(entries, cards)
+	want := []string{"W", "U", "B", "R", "G"}
+	if len(got) != len(want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("index %d: expected %s, got %s", i, want[i], got[i])
+		}
+	}
+}
+
+func TestOrganizeColorIdentity(t *testing.T) {
+	raw := parser.RawDeck{
+		Name:  "Test",
+		Cards: []parser.CardEntry{{Quantity: 1, Name: "Bolt"}},
+	}
+	cards := map[string]*scryfall.Card{
+		"Bolt": {Name: "Bolt", TypeLine: "Instant", CMC: 1, Colors: []string{"R"}},
+	}
+	d := Organize(raw, cards)
+	if len(d.ColorIdentity) != 1 || d.ColorIdentity[0] != "R" {
+		t.Errorf("expected ColorIdentity [R], got %v", d.ColorIdentity)
+	}
+}
+
+func TestOrganizeMissingCards(t *testing.T) {
+	raw := parser.RawDeck{
+		Name: "Missing",
+		Cards: []parser.CardEntry{
+			{Quantity: 1, Name: "Real Card"},
+			{Quantity: 1, Name: "Fake Card"},
+		},
+	}
+	cards := map[string]*scryfall.Card{
+		"Real Card": {Name: "Real Card", TypeLine: "Creature — Human", CMC: 1, Colors: []string{"W"}},
+	}
+	d := Organize(raw, cards)
+	total := 0
+	for _, g := range d.Groups {
+		total += g.Count
+	}
+	if total != 1 {
+		t.Errorf("expected 1 card (missing card skipped), got %d", total)
+	}
+}
+
+func TestOrganizeEmpty(t *testing.T) {
+	raw := parser.RawDeck{
+		Name:  "Empty",
+		Cards: []parser.CardEntry{{Quantity: 1, Name: "Nonexistent"}},
+	}
+	cards := map[string]*scryfall.Card{}
+	d := Organize(raw, cards)
+	if len(d.Groups) != 0 {
+		t.Errorf("expected 0 groups for no valid cards, got %d", len(d.Groups))
+	}
+}
+
+func TestLandAlphabeticalSort(t *testing.T) {
+	raw := parser.RawDeck{
+		Name: "Lands",
+		Cards: []parser.CardEntry{
+			{Quantity: 1, Name: "Swamp"},
+			{Quantity: 1, Name: "Forest"},
+			{Quantity: 1, Name: "Island"},
+		},
+	}
+	cards := map[string]*scryfall.Card{
+		"Swamp":  {Name: "Swamp", TypeLine: "Basic Land — Swamp", Colors: []string{}},
+		"Forest": {Name: "Forest", TypeLine: "Basic Land — Forest", Colors: []string{}},
+		"Island": {Name: "Island", TypeLine: "Basic Land — Island", Colors: []string{}},
+	}
+	d := Organize(raw, cards)
+	lands := d.Groups[0]
+	if lands.Cards[0].Name != "Forest" {
+		t.Errorf("expected Forest first (alphabetical), got %q", lands.Cards[0].Name)
+	}
+	if lands.Cards[1].Name != "Island" {
+		t.Errorf("expected Island second, got %q", lands.Cards[1].Name)
+	}
+	if lands.Cards[2].Name != "Swamp" {
+		t.Errorf("expected Swamp third, got %q", lands.Cards[2].Name)
+	}
+}
+
+func TestGroupCount(t *testing.T) {
+	raw := parser.RawDeck{
+		Name: "Counts",
+		Cards: []parser.CardEntry{
+			{Quantity: 3, Name: "Bolt"},
+			{Quantity: 2, Name: "Shock"},
+		},
+	}
+	cards := map[string]*scryfall.Card{
+		"Bolt":  {Name: "Bolt", TypeLine: "Instant", CMC: 1, Colors: []string{"R"}},
+		"Shock": {Name: "Shock", TypeLine: "Instant", CMC: 1, Colors: []string{"R"}},
+	}
+	d := Organize(raw, cards)
+	if d.Groups[0].Count != 5 {
+		t.Errorf("expected count 5, got %d", d.Groups[0].Count)
+	}
+}
+
+func TestSortSameCMCAlphabetical(t *testing.T) {
+	raw := parser.RawDeck{
+		Name: "Tiebreak",
+		Cards: []parser.CardEntry{
+			{Quantity: 1, Name: "Zephyr"},
+			{Quantity: 1, Name: "Alpha"},
+		},
+	}
+	cards := map[string]*scryfall.Card{
+		"Zephyr": {Name: "Zephyr", TypeLine: "Creature — Elemental", CMC: 2, Colors: []string{"U"}},
+		"Alpha":  {Name: "Alpha", TypeLine: "Creature — Human", CMC: 2, Colors: []string{"W"}},
+	}
+	d := Organize(raw, cards)
+	if d.Groups[0].Cards[0].Name != "Alpha" {
+		t.Errorf("expected Alpha first (alphabetical tiebreak), got %q", d.Groups[0].Cards[0].Name)
+	}
+}
+
 func TestSortWithinGroup(t *testing.T) {
 	raw := parser.RawDeck{
 		Name: "Sort Test",
