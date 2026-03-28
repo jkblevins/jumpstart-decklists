@@ -15,8 +15,8 @@ import (
 
 // Card dimensions in PDF points (1 inch = 72 points).
 const (
-	cardW = 180 // 2.5 inches
-	cardH = 252 // 3.5 inches
+	cardW = 178.6 // 63mm (MTG card width)
+	cardH = 249.4 // 88mm (MTG card height)
 
 	pageW = 612 // 8.5 inches (US Letter)
 	pageH = 792 // 11 inches (US Letter)
@@ -110,10 +110,12 @@ func (cr *cardRenderer) drawFrame() {
 	bg := cr.scheme.bg
 
 	// Tinted background with color-matched border.
+	// Inset by half the stroke width so the border stays within card bounds.
+	half := outerBorderW / 2
 	cr.pdf.SetFillColor(bg[0], bg[1], bg[2])
 	cr.pdf.SetStrokeColor(b[0], b[1], b[2])
 	cr.pdf.SetLineWidth(outerBorderW)
-	cr.pdf.Rectangle(cr.x, cr.y, cr.x+cardW, cr.y+cardH, "DF", 0, 0)
+	cr.pdf.Rectangle(cr.x+half, cr.y+half, cr.x+cardW-half, cr.y+cardH-half, "DF", 0, 0)
 
 	// Inner frame line in a darker shade of the border color.
 	cr.pdf.SetStrokeColor(b[0]/2, b[1]/2, b[2]/2)
