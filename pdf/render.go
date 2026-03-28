@@ -21,26 +21,35 @@ const (
 	pageW = 612 // 8.5 inches (US Letter)
 	pageH = 792 // 11 inches (US Letter)
 
-	colorBarH  = 11
-	borderW    = 0.75
-	marginX    = 7
-	marginY    = 5
-	fontTitle  = 9
-	fontHeader = 7.5
-	fontBody   = 7
-	lineHeight = 9
+	outerBorderW = 2.5  // thick outer frame
+	innerBorderW = 0.5  // thin inner frame line
+	innerInset   = 5.0  // distance from outer edge to inner frame
+	colorBarH    = 14.0 // top color identity bar (holds deck title)
+	marginX      = 8.0  // text left margin from inner frame
+	marginY      = 4.0  // text top margin from color bar
+	fontTitle    = 6.5
+	fontHeader   = 5.0
+	fontBody     = 4.5
+	lineHeight   = 6.0
+	indentX      = 4.0  // extra indent for card entries under headers
+	groupSpacing = 1.5  // vertical space between type groups
 )
 
-// colorMap maps single-letter color identities to RGB values used for the
-// top color bar on each card.
-var colorMap = map[string][3]uint8{
-	"W": {212, 175, 55},  // White: gold/cream
-	"U": {14, 104, 171},  // Blue: blue
-	"B": {59, 47, 74},    // Black: dark purple
-	"R": {211, 32, 41},   // Red: red
-	"G": {0, 115, 62},    // Green: green
-	"M": {212, 175, 55},  // Multicolor: gold
-	"C": {158, 158, 158}, // Colorless: gray
+// colorScheme defines the border/bar color and background tint for a color identity.
+type colorScheme struct {
+	border [3]uint8 // color bar and outer border
+	bg     [3]uint8 // card background fill
+}
+
+// colorMap maps single-letter color identities to their visual scheme.
+var colorMap = map[string]colorScheme{
+	"W": {border: [3]uint8{194, 171, 115}, bg: [3]uint8{245, 240, 225}}, // White: gold border, warm cream bg
+	"U": {border: [3]uint8{14, 104, 171}, bg: [3]uint8{215, 232, 245}},  // Blue: blue border, light blue bg
+	"B": {border: [3]uint8{50, 40, 50}, bg: [3]uint8{225, 220, 225}},    // Black: near-black border, light gray-purple bg
+	"R": {border: [3]uint8{211, 32, 41}, bg: [3]uint8{245, 225, 220}},   // Red: red border, light pink bg
+	"G": {border: [3]uint8{0, 115, 62}, bg: [3]uint8{220, 238, 220}},    // Green: green border, light green bg
+	"M": {border: [3]uint8{194, 171, 115}, bg: [3]uint8{245, 238, 220}}, // Multicolor: gold border, warm bg
+	"C": {border: [3]uint8{158, 158, 158}, bg: [3]uint8{235, 235, 235}}, // Colorless: gray border, light gray bg
 }
 
 // basicLands lists the five basic land names for special display formatting.
@@ -89,50 +98,71 @@ func pluralType(t string) string {
 
 // cardRenderer holds the state needed to draw a single decklist card.
 type cardRenderer struct {
-	pdf  *gopdf.GoPdf
-	x, y float64 // card origin (upper-left corner)
-	curY float64 // vertical cursor for text placement
+	pdf    *gopdf.GoPdf
+	x, y   float64      // card origin (upper-left corner)
+	curY   float64       // vertical cursor for text placement
+	scheme colorScheme
 }
 
-// drawBorder draws the thin outer border around the card.
-func (cr *cardRenderer) drawBorder() {
-	cr.pdf.SetStrokeColor(40, 40, 40)
-	cr.pdf.SetLineWidth(borderW)
-	cr.pdf.Rectangle(cr.x, cr.y, cr.x+cardW, cr.y+cardH, "D", 0, 0)
+// drawFrame draws the outer border, tinted background, and inner frame line.
+func (cr *cardRenderer) drawFrame() {
+	b := cr.scheme.border
+	bg := cr.scheme.bg
+
+	// Tinted background with color-matched border.
+	cr.pdf.SetFillColor(bg[0], bg[1], bg[2])
+	cr.pdf.SetStrokeColor(b[0], b[1], b[2])
+	cr.pdf.SetLineWidth(outerBorderW)
+	cr.pdf.Rectangle(cr.x, cr.y, cr.x+cardW, cr.y+cardH, "DF", 0, 0)
+
+	// Inner frame line in a darker shade of the border color.
+	cr.pdf.SetStrokeColor(b[0]/2, b[1]/2, b[2]/2)
+	cr.pdf.SetLineWidth(innerBorderW)
+	cr.pdf.Rectangle(cr.x+innerInset, cr.y+innerInset, cr.x+cardW-innerInset, cr.y+cardH-innerInset, "D", 0, 0)
 }
 
-// drawColorBar fills the top bar with the deck's dominant color.
-func (cr *cardRenderer) drawColorBar(color string) {
-	rgb := colorMap["C"]
-	if c, ok := colorMap[color]; ok {
-		rgb = c
-	}
-	cr.pdf.SetFillColor(rgb[0], rgb[1], rgb[2])
-	cr.pdf.Rectangle(cr.x+borderW, cr.y+borderW, cr.x+cardW-borderW, cr.y+borderW+colorBarH, "F", 0, 0)
+// drawColorBar fills the top bar with the deck's border color, inside the inner frame.
+func (cr *cardRenderer) drawColorBar() {
+	b := cr.scheme.border
+	cr.pdf.SetFillColor(b[0], b[1], b[2])
+	barX := cr.x + innerInset + innerBorderW
+	barY := cr.y + innerInset + innerBorderW
+	barW := cardW - 2*(innerInset+innerBorderW)
+	cr.pdf.RectFromUpperLeftWithStyle(barX, barY, barW, colorBarH, "F")
 }
 
-// drawTitle renders the deck name centered in bold below the color bar.
+// drawTitle renders the deck name centered in white on top of the color bar.
 func (cr *cardRenderer) drawTitle(name string) {
 	cr.pdf.SetFont("body", "B", fontTitle)
-	cr.pdf.SetTextColor(30, 30, 30)
+	cr.pdf.SetTextColor(255, 255, 255)
 
+	barY := cr.y + innerInset + innerBorderW
 	nameW, _ := cr.pdf.MeasureTextWidth(name)
 	nameX := cr.x + (cardW-nameW)/2
-	cr.pdf.SetXY(nameX, cr.curY)
+	// Text() uses baseline positioning. Offset down by ~75% of font size
+	// to visually center within the color bar.
+	nameY := barY + (colorBarH+fontTitle*0.5)/2
+	cr.pdf.SetXY(nameX, nameY)
 	cr.pdf.Text(name)
-	cr.curY += lineHeight + 2
+
+	// Reset text color for subsequent content.
+	cr.pdf.SetTextColor(30, 30, 30)
 }
 
 // drawGroups renders all type groups with headers and indented card entries.
 func (cr *cardRenderer) drawGroups(groups []deck.TypeGroup) {
+	textLeft := cr.x + innerInset + marginX
+
 	for _, g := range groups {
-		header := fmt.Sprintf("%s (%d):", pluralType(g.TypeName), g.Count)
+		header := fmt.Sprintf("%s:", pluralType(g.TypeName))
 		cr.pdf.SetFont("body", "B", fontHeader)
-		cr.pdf.SetXY(cr.x+marginX, cr.curY)
+		cr.pdf.SetTextColor(30, 30, 30)
+		cr.pdf.SetXY(textLeft, cr.curY)
 		cr.pdf.Text(header)
 		cr.curY += lineHeight
 
 		cr.pdf.SetFont("body", "", fontBody)
+		cr.pdf.SetTextColor(50, 50, 50)
 		for _, c := range g.Cards {
 			var line string
 			if basicLands[c.Name] {
@@ -140,24 +170,29 @@ func (cr *cardRenderer) drawGroups(groups []deck.TypeGroup) {
 			} else {
 				line = fmt.Sprintf("%d %s", c.Quantity, c.Name)
 			}
-			cr.pdf.SetXY(cr.x+marginX+5, cr.curY)
+			cr.pdf.SetXY(textLeft+indentX, cr.curY)
 			cr.pdf.Text(line)
 			cr.curY += lineHeight
 		}
-		cr.curY += 2
+		cr.curY += groupSpacing
 	}
 }
 
 // renderCard draws a single decklist card onto the PDF at the given offset.
 func renderCard(p *gopdf.GoPdf, d deck.Deck, x, y float64) {
-	cr := &cardRenderer{
-		pdf:  p,
-		x:    x,
-		y:    y,
-		curY: y + borderW + colorBarH + marginY,
+	scheme := colorMap["C"]
+	if s, ok := colorMap[d.DominantColor]; ok {
+		scheme = s
 	}
-	cr.drawBorder()
-	cr.drawColorBar(d.DominantColor)
+	cr := &cardRenderer{
+		pdf:    p,
+		x:      x,
+		y:      y,
+		curY:   y + innerInset + innerBorderW + colorBarH + marginY,
+		scheme: scheme,
+	}
+	cr.drawFrame()
+	cr.drawColorBar()
 	cr.drawTitle(d.Name)
 	cr.drawGroups(d.Groups)
 }
