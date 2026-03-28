@@ -57,15 +57,6 @@ var colorMap = map[string]colorScheme{
 	"C": {border: [3]uint8{158, 158, 158}, bg: [3]uint8{235, 235, 235}}, // Colorless: gray border, light gray bg
 }
 
-// basicLands lists the five basic land names for special display formatting.
-var basicLands = map[string]bool{
-	"Plains":   true,
-	"Island":   true,
-	"Swamp":    true,
-	"Mountain": true,
-	"Forest":   true,
-}
-
 // setupFonts registers the embedded DejaVu Sans regular and bold fonts with the PDF.
 func setupFonts(pdf *gopdf.GoPdf) error {
 	if err := pdf.AddTTFFontData("body", fontRegular); err != nil {
@@ -160,12 +151,7 @@ func (cr *cardRenderer) drawGroups(groups []deck.TypeGroup) {
 		cr.pdf.SetFont("body", "", fontBody)
 		cr.pdf.SetTextColor(50, 50, 50)
 		for _, c := range g.Cards {
-			var line string
-			if basicLands[c.Name] {
-				line = fmt.Sprintf("%s (%d)", c.Name, c.Quantity)
-			} else {
-				line = fmt.Sprintf("%d %s", c.Quantity, c.Name)
-			}
+			line := fmt.Sprintf("%d %s", c.Quantity, c.Name)
 			cr.pdf.SetXY(textLeft+indentX, cr.curY)
 			cr.pdf.Text(line)
 			cr.curY += lineHeight

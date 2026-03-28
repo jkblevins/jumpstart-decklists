@@ -72,7 +72,7 @@ Each card includes:
 - A color-matched border and tinted background based on the deck's color identity
 - Deck name centered in white on the color bar
 - Cards grouped by type with bold headers
-- Basic lands displayed as `Mountain (3)` instead of `3 Mountain`
+- All cards displayed as `<quantity> <name>` (e.g., `3 Mountain`)
 
 ### Color Identity
 
