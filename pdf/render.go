@@ -4,14 +4,19 @@
 package pdf
 
 import (
+	_ "embed"
 	"fmt"
-	"path/filepath"
-	"runtime"
 
 	"github.com/signintech/gopdf"
 
 	"jumpforge/deck"
 )
+
+//go:embed fonts/DejaVuSans.ttf
+var fontRegular []byte
+
+//go:embed fonts/DejaVuSans-Bold.ttf
+var fontBold []byte
 
 // Card dimensions in PDF points (1 inch = 72 points).
 const (
@@ -61,23 +66,12 @@ var basicLands = map[string]bool{
 	"Forest":   true,
 }
 
-// fontsDir returns the absolute path to the fonts directory, located relative
-// to this source file.
-func fontsDir() string {
-	_, filename, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(filepath.Dir(filename)), "fonts")
-}
-
-// setupFonts registers the DejaVu Sans regular and bold fonts with the PDF.
+// setupFonts registers the embedded DejaVu Sans regular and bold fonts with the PDF.
 func setupFonts(pdf *gopdf.GoPdf) error {
-	dir := fontsDir()
-	regular := filepath.Join(dir, "DejaVuSans.ttf")
-	bold := filepath.Join(dir, "DejaVuSans-Bold.ttf")
-
-	if err := pdf.AddTTFFont("body", regular); err != nil {
+	if err := pdf.AddTTFFontData("body", fontRegular); err != nil {
 		return fmt.Errorf("add regular font: %w", err)
 	}
-	if err := pdf.AddTTFFontWithOption("body", bold, gopdf.TtfOption{Style: gopdf.Bold}); err != nil {
+	if err := pdf.AddTTFFontDataWithOption("body", fontBold, gopdf.TtfOption{Style: gopdf.Bold}); err != nil {
 		return fmt.Errorf("add bold font: %w", err)
 	}
 	return nil
