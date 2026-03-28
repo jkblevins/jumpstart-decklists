@@ -1,0 +1,9 @@
+Goblin Rush
+
+1 Goblin Guide
+2 Lightning Bolt
+1 Reckless Bushwhacker
+// this is a comment
+3 Mountain
+
+1 Goblin Chainwhirler
