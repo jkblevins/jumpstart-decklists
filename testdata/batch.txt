@@ -1,11 +1,103 @@
-Goblin Rush
+Prideful
 
-1 Goblin Guide
-2 Lightning Bolt
-3 Mountain
+1 Brimaz, King of Oreskos
+1 Dawnwing Marshal
+1 Basri's Acolyte
+1 Ingenious Leonin
+1 King of the Pride
+1 Leonin of the Lost Pride
+1 Leonin Vanguard
+1 Savannah Lions
+1 Leonin Scimitar
+1 Impeccable Timing
+1 Take up the Shield
+1 Pacifism
+1 Thriving Heath
+7 Plains
 ---
-Forest Friends
+Illusions
 
-1 Llanowar Elves
-2 Giant Growth
-4 Forest
+1 Pol Jamaar, Illusionist
+1 Lord of the Unreal
+1 Phantasmal Shieldback
+1 Murmuring Mystic
+1 Haunting Figment
+1 Krovikan Mist
+1 Oneirophage
+1 Phantom Ninja
+1 Starlight Snare
+1 Opt
+1 Phantasmal Form
+1 Supreme Will
+1 Thriving Isle
+7 Island
+---
+Snakes
+
+1 Aphelia, Viper Whisperer
+1 Hooded Blightfang
+1 Scourge of the Undercity
+1 Serpent Assassin
+1 Pharika's Chosen
+1 Ukud Cobra
+1 Venomous Hierophant
+1 Vraska's Finisher
+1 Killing Glare
+1 Coat with Venom
+1 Night's Whisper
+1 Gorgon Flail
+1 Thriving Moor
+7 Swamp
+---
+Too Many
+
+1 Fiendish Duo
+2 Brothers Yamazaki
+1 Battle-Rattle Shaman
+1 Mogg Flunkies
+1 Weaselback Redcap
+1 Goblin Surprise
+1 Twinferno
+1 Krenko's Command
+1 Furious Reprisal
+1 Pigment Storm
+1 Reckless Impulse
+1 Thriving Bluff
+7 Mountain
+---
+Dinner
+1 Hurska Sweet-Tooth
+1 Saurian Symbiote
+1 Fierce Witchstalker
+1 Maraleaf Rider
+1 Orchard Strider
+1 Tireless Provisioner
+1 Tough Cookie
+1 Gingerbrute
+1 Bite Down
+1 Insatiable Appetite
+1 Giant Opportunity
+1 Trail of Crumbs
+1 Thriving Grove
+7 Forest
+---
+Chaos
+
+1 Averna, the Chaos Bloom
+1 Shardless Outlander
+1 Druid of the Anima
+1 Bloodbraid Elf
+1 Enlisted Wurm
+1 Fusion Elemental
+1 Maelstrom Colossus
+1 Chromatic Lantern
+1 Ash Barrens
+1 Terramorphic Expanse
+1 Plains
+1 Island
+1 Swamp
+2 Mountain
+2 Forest
+1 Fiery Fall
+1 Bituminous Blast
+1 Violent Outburst

@@ -1,28 +1,16 @@
-Gruul Clans 1
+Illusions
 
-// cards in a weird order
-
-// Artifacts (1)
-1 Gruul Signet
-1 Furious Spinesplitter
-// Lands (8)
-1 Gruul Turf
-1 Gruul Guildgate
-1 Thriving Bluff
-5 Mountain
-// Creatures (8)
-1 Gravel-Hide Goblin
-1 Stormblood Berserker
-1 Pyrewild Shaman
-1 Turret Ogre
-1 Firespout
-1 Clan Defiance
-
-1 Herald of Ilharg
-1 Chainwhip Cyclops
-1 Ripscale Predator
-
-// Enchantments (1)
-1 Shiny Impetus
-
-// Sorceries (2)
+1 Pol Jamaar, Illusionist
+1 Lord of the Unreal
+1 Phantasmal Shieldback
+1 Murmuring Mystic
+1 Haunting Figment
+1 Krovikan Mist
+1 Oneirophage
+1 Phantom Ninja
+1 Starlight Snare
+1 Opt
+1 Phantasmal Form
+1 Supreme Will
+1 Thriving Isle
+7 Island
