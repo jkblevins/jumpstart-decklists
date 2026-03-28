@@ -74,6 +74,7 @@ func (c *Client) fetchFromAPI(name, safeName string) (*Card, error) {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/json")
 
 	c.lastReq = time.Now()
 	resp, err := c.httpClient.Do(req)
@@ -90,6 +91,7 @@ func (c *Client) fetchFromAPI(name, safeName string) (*Card, error) {
 		// URL is already validated above; error can be safely ignored.
 		req2, _ := http.NewRequest("GET", u, nil)
 		req2.Header.Set("User-Agent", userAgent)
+		req2.Header.Set("Accept", "application/json")
 		c.lastReq = time.Now()
 		resp, err = c.httpClient.Do(req2)
 		if err != nil {
@@ -141,7 +143,7 @@ func (c *Client) FetchCards(names []string) (map[string]*Card, error) {
 
 		card, err := c.FetchCard(name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "WARNING: %q not found, skipping\n", name)
+			fmt.Fprintf(os.Stderr, "WARNING: %q: %v, skipping\n", name, err)
 			continue
 		}
 		result[name] = card
