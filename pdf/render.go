@@ -34,13 +34,13 @@ const (
 // colorMap maps single-letter color identities to RGB values used for the
 // top color bar on each card.
 var colorMap = map[string][3]uint8{
-	"W": {212, 175, 55},  // gold/cream
-	"U": {14, 104, 171},  // blue
-	"B": {59, 47, 74},    // dark purple
-	"R": {211, 32, 41},   // red
-	"G": {0, 115, 62},    // green
-	"M": {212, 175, 55},  // gold (multicolor)
-	"C": {158, 158, 158}, // gray
+	"W": {212, 175, 55},  // White: gold/cream
+	"U": {14, 104, 171},  // Blue: blue
+	"B": {59, 47, 74},    // Black: dark purple
+	"R": {211, 32, 41},   // Red: red
+	"G": {0, 115, 62},    // Green: green
+	"M": {212, 175, 55},  // Multicolor: gold
+	"C": {158, 158, 158}, // Colorless: gray
 }
 
 // basicLands lists the five basic land names for special display formatting.
@@ -87,45 +87,52 @@ func pluralType(t string) string {
 	}
 }
 
-// renderCard draws a single decklist card onto the PDF at the given x/y
-// offset. It renders the outer border, color bar, deck name, and all card
-// entries grouped by type.
-func renderCard(pdf *gopdf.GoPdf, d deck.Deck, x, y float64) {
-	// Outer border (stroke only).
-	pdf.SetStrokeColor(40, 40, 40)
-	pdf.SetLineWidth(borderW)
-	pdf.Rectangle(x, y, x+cardW, y+cardH, "D", 0, 0)
+// cardRenderer holds the state needed to draw a single decklist card.
+type cardRenderer struct {
+	pdf  *gopdf.GoPdf
+	x, y float64 // card origin (upper-left corner)
+	curY float64 // vertical cursor for text placement
+}
 
-	// Color bar.
+// drawBorder draws the thin outer border around the card.
+func (cr *cardRenderer) drawBorder() {
+	cr.pdf.SetStrokeColor(40, 40, 40)
+	cr.pdf.SetLineWidth(borderW)
+	cr.pdf.Rectangle(cr.x, cr.y, cr.x+cardW, cr.y+cardH, "D", 0, 0)
+}
+
+// drawColorBar fills the top bar with the deck's dominant color.
+func (cr *cardRenderer) drawColorBar(color string) {
 	rgb := colorMap["C"]
-	if c, ok := colorMap[d.DominantColor]; ok {
+	if c, ok := colorMap[color]; ok {
 		rgb = c
 	}
-	pdf.SetFillColor(rgb[0], rgb[1], rgb[2])
-	pdf.Rectangle(x+borderW, y+borderW, x+cardW-borderW, y+borderW+colorBarH, "F", 0, 0)
+	cr.pdf.SetFillColor(rgb[0], rgb[1], rgb[2])
+	cr.pdf.Rectangle(cr.x+borderW, cr.y+borderW, cr.x+cardW-borderW, cr.y+borderW+colorBarH, "F", 0, 0)
+}
 
-	// Deck name centered below color bar.
-	curY := y + borderW + colorBarH + marginY
-	pdf.SetFont("body", "B", fontTitle)
-	pdf.SetTextColor(30, 30, 30)
+// drawTitle renders the deck name centered in bold below the color bar.
+func (cr *cardRenderer) drawTitle(name string) {
+	cr.pdf.SetFont("body", "B", fontTitle)
+	cr.pdf.SetTextColor(30, 30, 30)
 
-	nameW, _ := pdf.MeasureTextWidth(d.Name)
-	nameX := x + (cardW-nameW)/2
-	pdf.SetXY(nameX, curY)
-	pdf.Text(d.Name)
-	curY += lineHeight + 2
+	nameW, _ := cr.pdf.MeasureTextWidth(name)
+	nameX := cr.x + (cardW-nameW)/2
+	cr.pdf.SetXY(nameX, cr.curY)
+	cr.pdf.Text(name)
+	cr.curY += lineHeight + 2
+}
 
-	// Card groups.
-	for _, g := range d.Groups {
-		// Group header.
+// drawGroups renders all type groups with headers and indented card entries.
+func (cr *cardRenderer) drawGroups(groups []deck.TypeGroup) {
+	for _, g := range groups {
 		header := fmt.Sprintf("%s (%d):", pluralType(g.TypeName), g.Count)
-		pdf.SetFont("body", "B", fontHeader)
-		pdf.SetXY(x+marginX, curY)
-		pdf.Text(header)
-		curY += lineHeight
+		cr.pdf.SetFont("body", "B", fontHeader)
+		cr.pdf.SetXY(cr.x+marginX, cr.curY)
+		cr.pdf.Text(header)
+		cr.curY += lineHeight
 
-		// Card entries.
-		pdf.SetFont("body", "", fontBody)
+		cr.pdf.SetFont("body", "", fontBody)
 		for _, c := range g.Cards {
 			var line string
 			if basicLands[c.Name] {
@@ -133,10 +140,24 @@ func renderCard(pdf *gopdf.GoPdf, d deck.Deck, x, y float64) {
 			} else {
 				line = fmt.Sprintf("%d %s", c.Quantity, c.Name)
 			}
-			pdf.SetXY(x+marginX+5, curY)
-			pdf.Text(line)
-			curY += lineHeight
+			cr.pdf.SetXY(cr.x+marginX+5, cr.curY)
+			cr.pdf.Text(line)
+			cr.curY += lineHeight
 		}
-		curY += 2 // spacing between groups
+		cr.curY += 2
 	}
+}
+
+// renderCard draws a single decklist card onto the PDF at the given offset.
+func renderCard(p *gopdf.GoPdf, d deck.Deck, x, y float64) {
+	cr := &cardRenderer{
+		pdf:  p,
+		x:    x,
+		y:    y,
+		curY: y + borderW + colorBarH + marginY,
+	}
+	cr.drawBorder()
+	cr.drawColorBar(d.DominantColor)
+	cr.drawTitle(d.Name)
+	cr.drawGroups(d.Groups)
 }
