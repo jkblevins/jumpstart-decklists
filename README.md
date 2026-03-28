@@ -63,16 +63,37 @@ Single deck produces a card-sized PDF (2.5" x 3.5"). Multiple decks produce a le
 
 Each card includes:
 
-- A colored top bar matching the deck's dominant color identity
-- Deck name centered in bold
-- Cards grouped by type (Creature, Planeswalker, Instant, Sorcery, Enchantment, Artifact, Land)
-- Sorted by mana cost within each group
+- A color-matched border and tinted background based on the deck's color identity
+- Deck name centered in white on the color bar
+- Cards grouped by type with bold headers
 - Basic lands displayed as `Mountain (3)` instead of `3 Mountain`
+
+### Color Identity
+
+The border and background color is determined by the deck's color identity:
+
+- **Mono-colored** decks (all cards share one color) get that color's scheme
+- **Multi-colored** decks (cards with 2+ distinct colors) get a gold/multicolor scheme
+- **Colorless** decks (no colored cards) get a gray scheme
+
+### Card Grouping
+
+Cards are grouped by type in this order:
+
+1. Creatures
+2. Planeswalkers
+3. Instants
+4. Sorceries
+5. Enchantments
+6. Artifacts
+7. Lands
+
+Cards with multiple types (e.g., "Artifact Creature") are classified by the most specific type using the priority order above. An Artifact Creature goes under Creatures, not Artifacts. An Enchantment Creature goes under Creatures, not Enchantments.
+
+### Sorting
+
+Within each group, cards are sorted by converted mana cost (ascending), then alphabetically by name for ties. Lands are sorted alphabetically only.
 
 ## Card Data
 
 Card metadata is fetched from [Scryfall](https://scryfall.com/) and cached locally at `~/.cache/jumpforge/` for one week. API rate limits are respected (100ms between requests).
-
-## License
-
-MIT
