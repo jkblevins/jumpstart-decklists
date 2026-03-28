@@ -132,8 +132,7 @@ func (cr *cardRenderer) drawTitle(name string) {
 	cr.pdf.SetTextColor(255, 255, 255)
 
 	barY := cr.y + innerInset + innerBorderW
-	nameW, _ := cr.pdf.MeasureTextWidth(name)
-	nameX := cr.x + (cardW-nameW)/2
+	nameX := cr.x + innerInset + marginX
 	// Text() uses baseline positioning. Offset down by ~75% of font size
 	// to visually center within the color bar.
 	nameY := barY + (colorBarH+fontTitle*0.5)/2
@@ -141,6 +140,31 @@ func (cr *cardRenderer) drawTitle(name string) {
 	cr.pdf.Text(name)
 
 	// Reset text color for subsequent content.
+	cr.pdf.SetTextColor(30, 30, 30)
+}
+
+// formatColorIdentity formats a slice of color letters as Scryfall-style braces.
+func formatColorIdentity(colors []string) string {
+	var s string
+	for _, c := range colors {
+		s += "{" + c + "}"
+	}
+	return s
+}
+
+// drawColorIdentity renders the deck's color identity right-aligned in the color bar.
+func (cr *cardRenderer) drawColorIdentity(colors []string) {
+	text := formatColorIdentity(colors)
+	cr.pdf.SetFont("body", "B", fontHeader)
+	cr.pdf.SetTextColor(255, 255, 255)
+
+	barY := cr.y + innerInset + innerBorderW
+	textW, _ := cr.pdf.MeasureTextWidth(text)
+	textX := cr.x + cardW - innerInset - marginX - textW
+	textY := barY + (colorBarH+fontHeader*0.5)/2
+	cr.pdf.SetXY(textX, textY)
+	cr.pdf.Text(text)
+
 	cr.pdf.SetTextColor(30, 30, 30)
 }
 
@@ -184,5 +208,6 @@ func renderCard(p *gopdf.GoPdf, d deck.Deck, x, y float64) {
 	cr.drawFrame()
 	cr.drawColorBar()
 	cr.drawTitle(d.Name)
+	cr.drawColorIdentity(d.ColorIdentity)
 	cr.drawGroups(d.Groups)
 }

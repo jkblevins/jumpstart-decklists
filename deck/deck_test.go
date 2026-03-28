@@ -44,7 +44,7 @@ func TestDominantColorMono(t *testing.T) {
 		{Quantity: 2, Name: "Lightning Bolt"},
 		{Quantity: 3, Name: "Mountain"},
 	}
-	got := dominantColor(entries, cards)
+	got := dominantColor(deckColors(entries, cards))
 	if got != "R" {
 		t.Errorf("expected R (mono-red), got %q", got)
 	}
@@ -64,7 +64,7 @@ func TestDominantColorMultipleColors(t *testing.T) {
 		{Quantity: 1, Name: "Llanowar Elves"},
 	}
 	// Both R and G appear => multicolor
-	got := dominantColor(entries, cards)
+	got := dominantColor(deckColors(entries, cards))
 	if got != "M" {
 		t.Errorf("expected M (multicolor), got %q", got)
 	}
@@ -79,7 +79,7 @@ func TestDominantColorColorless(t *testing.T) {
 		{Quantity: 3, Name: "Mountain"},
 		{Quantity: 3, Name: "Forest"},
 	}
-	got := dominantColor(entries, cards)
+	got := dominantColor(deckColors(entries, cards))
 	if got != "C" {
 		t.Errorf("expected C (colorless), got %q", got)
 	}
@@ -95,7 +95,7 @@ func TestDominantColorMulticolor(t *testing.T) {
 		{Quantity: 2, Name: "CardG"},
 	}
 	// Tied: no single color strictly dominates => multicolor
-	got := dominantColor(entries, cards)
+	got := dominantColor(deckColors(entries, cards))
 	if got != "M" {
 		t.Errorf("expected M (multicolor), got %q", got)
 	}

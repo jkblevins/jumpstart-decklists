@@ -37,11 +37,15 @@ type TypeGroup struct {
 	Count    int // total quantity
 }
 
+// wubrg defines the canonical MTG color wheel order for sorting.
+var wubrg = []string{"W", "U", "B", "R", "G"}
+
 // Deck is a fully organized decklist ready for rendering, with cards grouped
 // by type and a dominant color determined from color identity frequencies.
 type Deck struct {
 	Name          string
-	DominantColor string // W, U, B, R, G, M (multicolor), C (colorless)
+	DominantColor string   // W, U, B, R, G, M (multicolor), C (colorless)
+	ColorIdentity []string // distinct colors in WUBRG order, or {"C"} for colorless
 	Groups        []TypeGroup
 }
 
@@ -57,28 +61,42 @@ func classifyType(typeLine string) string {
 	return "Land" // fallback
 }
 
-// dominantColor determines the deck's color identity. Returns "C" if no colors
-// are present, "M" if two or more distinct colors appear, or the single color
-// letter if the deck is mono-colored.
-func dominantColor(entries []parser.CardEntry, cards map[string]*scryfall.Card) string {
-	colors := make(map[string]bool)
+// deckColors collects distinct colors from all cards and returns them in WUBRG order.
+// Returns {"C"} for colorless decks.
+func deckColors(entries []parser.CardEntry, cards map[string]*scryfall.Card) []string {
+	present := make(map[string]bool)
 	for _, e := range entries {
 		c, ok := cards[e.Name]
 		if !ok {
 			continue
 		}
 		for _, color := range c.ColorIdentity {
-			colors[color] = true
+			present[color] = true
 		}
 	}
 
-	switch len(colors) {
-	case 0:
-		return "C"
-	case 1:
-		for color := range colors {
-			return color
+	if len(present) == 0 {
+		return []string{"C"}
+	}
+
+	var colors []string
+	for _, c := range wubrg {
+		if present[c] {
+			colors = append(colors, c)
 		}
+	}
+	return colors
+}
+
+// dominantColor determines the deck's color identity. Returns "C" if no colors
+// are present, "M" if two or more distinct colors appear, or the single color
+// letter if the deck is mono-colored.
+func dominantColor(colors []string) string {
+	if len(colors) == 1 && colors[0] == "C" {
+		return "C"
+	}
+	if len(colors) == 1 {
+		return colors[0]
 	}
 	return "M"
 }
@@ -136,9 +154,11 @@ func Organize(raw parser.RawDeck, cards map[string]*scryfall.Card) Deck {
 		}
 	}
 
+	colors := deckColors(raw.Cards, cards)
 	return Deck{
 		Name:          raw.Name,
-		DominantColor: dominantColor(raw.Cards, cards),
+		DominantColor: dominantColor(colors),
+		ColorIdentity: colors,
 		Groups:        groups,
 	}
 }
