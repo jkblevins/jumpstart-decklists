@@ -74,7 +74,7 @@ func Organize(raw parser.RawDeck, cards map[string]*scryfall.Card) Deck {
 
 	// Build groups in display order.
 	var groups []TypeGroup
-	for _, typeName := range typeOrder {
+	for _, typeName := range displayOrder {
 		if groupCards, ok := grouped[typeName]; ok {
 			total := 0
 			for _, c := range groupCards {
@@ -101,8 +101,8 @@ func Organize(raw parser.RawDeck, cards map[string]*scryfall.Card) Deck {
 	}
 }
 
-// typeOrder defines the display order for card type groups.
-var typeOrder = []string{
+// displayOrder defines the display order for card type groups.
+var displayOrder = []string{
 	"Creature",
 	"Planeswalker",
 	"Instant",
@@ -110,6 +110,19 @@ var typeOrder = []string{
 	"Enchantment",
 	"Artifact",
 	"Land",
+}
+
+// classifyPriority defines the order in which types are checked when a card
+// has multiple types. Land is checked first so that creature lands (e.g.,
+// Dryad Arbor) are classified as lands.
+var classifyPriority = []string{
+	"Land",
+	"Creature",
+	"Planeswalker",
+	"Instant",
+	"Sorcery",
+	"Enchantment",
+	"Artifact",
 }
 
 // wubrg defines the canonical MTG color wheel order for sorting.
@@ -127,10 +140,9 @@ func ValidColor(s string) bool {
 }
 
 // classifyType maps a Scryfall type line to one of the canonical type group
-// names. The first match in typeOrder wins, so "Artifact Creature" becomes
-// "Creature" rather than "Artifact".
+// names. Land takes priority so that creature lands are classified as lands.
 func classifyType(typeLine string) string {
-	for _, t := range typeOrder {
+	for _, t := range classifyPriority {
 		if strings.Contains(typeLine, t) {
 			return t
 		}

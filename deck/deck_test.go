@@ -22,6 +22,9 @@ func TestClassifyType(t *testing.T) {
 		{"Artifact — Equipment", "Artifact"},
 		{"Basic Land — Mountain", "Land"},
 		{"Land", "Land"},
+		{"Land Creature — Dryad", "Land"},
+		{"Artifact Land", "Land"},
+		{"Enchantment Land", "Land"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.typeLine, func(t *testing.T) {
@@ -112,21 +115,21 @@ func TestOrganize(t *testing.T) {
 	}
 	cards := map[string]*scryfall.Card{
 		"Goblin Guide": {
-			Name:          "Goblin Guide",
-			TypeLine:      "Creature — Goblin Scout",
-			CMC:           1,
-			Colors: []string{"R"},
+			Name:     "Goblin Guide",
+			TypeLine: "Creature — Goblin Scout",
+			CMC:      1,
+			Colors:   []string{"R"},
 		},
 		"Lightning Bolt": {
-			Name:          "Lightning Bolt",
-			TypeLine:      "Instant",
-			CMC:           1,
-			Colors: []string{"R"},
+			Name:     "Lightning Bolt",
+			TypeLine: "Instant",
+			CMC:      1,
+			Colors:   []string{"R"},
 		},
 		"Mountain": {
-			Name:          "Mountain",
-			TypeLine:      "Basic Land — Mountain",
-			Colors: []string{},
+			Name:     "Mountain",
+			TypeLine: "Basic Land — Mountain",
+			Colors:   []string{},
 		},
 	}
 	d := Organize(raw, cards)
@@ -369,6 +372,40 @@ func TestOrganizeWithoutColorOverride(t *testing.T) {
 	d := Organize(raw, cards)
 	if d.DominantColor != "M" {
 		t.Errorf("expected DominantColor 'M' (auto-detected multicolor), got %q", d.DominantColor)
+	}
+}
+
+func TestLandCreatureDisplaysUnderLandsLast(t *testing.T) {
+	raw := parser.RawDeck{
+		Name: "Dryad Test",
+		Cards: []parser.CardEntry{
+			{Quantity: 1, Name: "Dryad Arbor"},
+			{Quantity: 1, Name: "Goblin Guide"},
+			{Quantity: 1, Name: "Lightning Bolt"},
+		},
+	}
+	cards := map[string]*scryfall.Card{
+		"Dryad Arbor":    {Name: "Dryad Arbor", TypeLine: "Land Creature — Dryad", CMC: 0, Colors: []string{"G"}},
+		"Goblin Guide":   {Name: "Goblin Guide", TypeLine: "Creature — Goblin Scout", CMC: 1, Colors: []string{"R"}},
+		"Lightning Bolt": {Name: "Lightning Bolt", TypeLine: "Instant", CMC: 1, Colors: []string{"R"}},
+	}
+	d := Organize(raw, cards)
+	if len(d.Groups) != 3 {
+		t.Fatalf("expected 3 groups, got %d", len(d.Groups))
+	}
+	// Creatures first, then Instants, then Lands last (display order)
+	if d.Groups[0].TypeName != "Creature" {
+		t.Errorf("expected first group Creature, got %q", d.Groups[0].TypeName)
+	}
+	if d.Groups[1].TypeName != "Instant" {
+		t.Errorf("expected second group Instant, got %q", d.Groups[1].TypeName)
+	}
+	if d.Groups[2].TypeName != "Land" {
+		t.Errorf("expected third group Land, got %q", d.Groups[2].TypeName)
+	}
+	// Dryad Arbor should be under Lands, not Creatures
+	if d.Groups[2].Cards[0].Name != "Dryad Arbor" {
+		t.Errorf("expected Dryad Arbor under Lands, got %q", d.Groups[2].Cards[0].Name)
 	}
 }
 

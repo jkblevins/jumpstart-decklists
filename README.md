@@ -125,7 +125,17 @@ Cards are grouped by type in this order:
 
 #### Multi-type cards
 
-Cards with multiple types (e.g., "Artifact Creature") are classified by the most specific type using the priority order above. An Artifact Creature goes under Creatures, not Artifacts. An Enchantment Creature goes under Creatures, not Enchantments.
+Cards with multiple types are classified by this priority:
+
+1. Land
+2. Creature
+3. Planeswalker
+4. Instant
+5. Sorcery
+6. Enchantment
+7. Artifact
+
+A Land Creature (e.g., Dryad Arbor) goes under Lands. An Artifact Creature goes under Creatures.
 
 ### Sorting
 
