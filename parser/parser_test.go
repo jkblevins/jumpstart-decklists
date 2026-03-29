@@ -116,6 +116,120 @@ func TestParseCardLine(t *testing.T) {
 	}
 }
 
+func TestParseColorOverride(t *testing.T) {
+	input := `Azorius Senate [W]
+
+1 Swords to Plowshares
+2 Counterspell
+`
+	decks, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d := decks[0]
+	if d.Name != "Azorius Senate" {
+		t.Errorf("expected name 'Azorius Senate', got %q", d.Name)
+	}
+	if d.ColorOverride != "W" {
+		t.Errorf("expected ColorOverride 'W', got %q", d.ColorOverride)
+	}
+}
+
+func TestParseNoColorOverride(t *testing.T) {
+	input := `Goblin Rush
+
+1 Goblin Guide
+`
+	decks, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if decks[0].ColorOverride != "" {
+		t.Errorf("expected empty ColorOverride, got %q", decks[0].ColorOverride)
+	}
+}
+
+func TestParseColorOverrideInvalidCode(t *testing.T) {
+	input := `Bad Deck [X]
+
+1 Goblin Guide
+`
+	_, err := Parse(strings.NewReader(input))
+	if err == nil {
+		t.Fatal("expected error for invalid color override, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid color override") {
+		t.Errorf("expected 'invalid color override' in error, got %q", err.Error())
+	}
+}
+
+func TestParseEscapedBrackets(t *testing.T) {
+	input := `Goblins \[Part 1\]
+
+1 Goblin Guide
+`
+	decks, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d := decks[0]
+	if d.Name != "Goblins [Part 1]" {
+		t.Errorf("expected name 'Goblins [Part 1]', got %q", d.Name)
+	}
+	if d.ColorOverride != "" {
+		t.Errorf("expected empty ColorOverride, got %q", d.ColorOverride)
+	}
+}
+
+func TestParseEscapedBracketsWithOverride(t *testing.T) {
+	input := `Goblins \[Part 1\] [R]
+
+1 Goblin Guide
+`
+	decks, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d := decks[0]
+	if d.Name != "Goblins [Part 1]" {
+		t.Errorf("expected name 'Goblins [Part 1]', got %q", d.Name)
+	}
+	if d.ColorOverride != "R" {
+		t.Errorf("expected ColorOverride 'R', got %q", d.ColorOverride)
+	}
+}
+
+func TestParseBatchWithMixedOverrides(t *testing.T) {
+	input := `Azorius 1 [W]
+
+1 Swords to Plowshares
+---
+Azorius 2 [U]
+
+1 Counterspell
+---
+Goblins
+
+1 Goblin Guide
+`
+	decks, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(decks) != 3 {
+		t.Fatalf("expected 3 decks, got %d", len(decks))
+	}
+	if decks[0].ColorOverride != "W" {
+		t.Errorf("deck 0: expected ColorOverride 'W', got %q", decks[0].ColorOverride)
+	}
+	if decks[1].ColorOverride != "U" {
+		t.Errorf("deck 1: expected ColorOverride 'U', got %q", decks[1].ColorOverride)
+	}
+	if decks[2].ColorOverride != "" {
+		t.Errorf("deck 2: expected empty ColorOverride, got %q", decks[2].ColorOverride)
+	}
+}
+
 func TestParseEmptyInput(t *testing.T) {
 	decks, err := Parse(strings.NewReader(""))
 	if err != nil {

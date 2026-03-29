@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -17,8 +18,9 @@ type CardEntry struct {
 
 // RawDeck represents is a parsed decklist with a name and card entries.
 type RawDeck struct {
-	Name  string
-	Cards []CardEntry
+	Name          string
+	ColorOverride string // "", "W", "U", "B", "R", "G", "M", or "C"
+	Cards         []CardEntry
 }
 
 // Parse reads a decklist from r and returns the parsed decks.
@@ -48,7 +50,11 @@ func Parse(r io.Reader) ([]RawDeck, error) {
 
 		// begin new deck
 		if current == nil {
-			current = &RawDeck{Name: line}
+			name, colorOverride, err := parseDeckName(line)
+			if err != nil {
+				return nil, err
+			}
+			current = &RawDeck{Name: name, ColorOverride: colorOverride}
 			continue
 		}
 
@@ -70,6 +76,47 @@ func Parse(r io.Reader) ([]RawDeck, error) {
 	}
 
 	return decks, nil
+}
+
+// validColorOverrides is the set of accepted color codes for deck color override.
+var validColorOverrides = map[string]bool{
+	"W": true, "U": true, "B": true, "R": true, "G": true,
+	"M": true, "C": true,
+}
+
+// colorOverrideRe matches an unescaped [X] suffix at the end of a deck name line.
+var colorOverrideRe = regexp.MustCompile(`\s+\[([A-Z]+)\]\s*$`)
+
+// parseDeckName extracts the deck name and optional color override from a
+// name line. Escaped brackets (\[ and \]) are unescaped in the final name.
+// Returns an error if the override code is not a valid color.
+func parseDeckName(line string) (name string, colorOverride string, err error) {
+	// Only match unescaped trailing brackets: find the last match that
+	// isn't preceded by a backslash.
+	if loc := colorOverrideRe.FindStringIndex(line); loc != nil {
+		// Check the character before the match isn't a backslash
+		if loc[0] == 0 || line[loc[0]-1] != '\\' {
+			sub := colorOverrideRe.FindStringSubmatch(line[loc[0]:])
+			colorOverride = sub[1]
+			if !validColorOverrides[colorOverride] {
+				name = strings.TrimSpace(line[:loc[0]])
+				name = strings.ReplaceAll(name, `\[`, "[")
+				name = strings.ReplaceAll(name, `\]`, "]")
+				return "", "", fmt.Errorf("deck %q: invalid color override %q (valid: W, U, B, R, G, M, C)", name, colorOverride)
+			}
+			name = strings.TrimSpace(line[:loc[0]])
+		}
+	}
+
+	if name == "" {
+		name = line
+	}
+
+	// Unescape brackets
+	name = strings.ReplaceAll(name, `\[`, "[")
+	name = strings.ReplaceAll(name, `\]`, "]")
+
+	return name, colorOverride, nil
 }
 
 // parseCardLine splits a line like "2 Lightning Bolt" into a CardEntry.

@@ -46,6 +46,7 @@ Goblin Rush
 - First non-blank line is the deck name.
 - Remaining lines: `<quantity> <card name>`.
 - Blank lines and `//` comments are ignored.
+- Optional color override: append `[X]` to the deck name (see [Color Override](#color-override)).
 
 ### Batch Mode
 
@@ -83,6 +84,26 @@ The border and background color is determined by the deck's color identity:
 - **Mono-colored** decks (all cards share one color) get that color's scheme
 - **Multi-colored** decks (cards with 2+ distinct colors) get a gold/multicolor scheme
 - **Colorless** decks (no colored cards) get a gray scheme
+
+#### Color Override
+
+You can override the auto-detected color by appending a color code in brackets to the deck name:
+
+```
+Azorius Senate 1 [W]
+
+1 Swords to Plowshares
+1 Counterspell
+---
+Azorius Senate 2 [U]
+
+1 Counterspell
+1 Swords to Plowshares
+```
+
+Valid codes: `W` (white), `U` (blue), `B` (black), `R` (red), `G` (green), `M` (multicolor), `C` (colorless). The bracket suffix is stripped from the deck name. The override only affects the border and background color — mana symbols in the title bar are still auto-detected.
+
+To use literal brackets in a deck name, escape them with backslashes: `Goblins \[Part 1\]`.
 
 ### Card Grouping
 
