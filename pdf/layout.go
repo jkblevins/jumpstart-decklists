@@ -18,8 +18,8 @@ const (
 	cardW = 172.9 // 61mm (1mm inset from MTG card edge for rounded corners)
 	cardH = 243.7 // 86mm (1mm inset from MTG card edge for rounded corners)
 
-	pageW = 612 // 8.5 inches (US Letter)
-	pageH = 792 // 11 inches (US Letter)
+	pageW = 792 // 11 inches (US Letter landscape)
+	pageH = 612 // 8.5 inches (US Letter landscape)
 )
 
 // Card structure constants.
@@ -50,8 +50,8 @@ const (
 
 // Grid layout constants for batch mode.
 const (
-	gridCols = 3   // card columns per page in batch mode
-	gridRows = 3   // card rows per page in batch mode
+	gridCols = 4   // card columns per page in batch mode
+	gridRows = 2   // card rows per page in batch mode
 	cardGap  = 0.0 // no gap — bleed areas fill the space between cards
 	bleed    = 8.5 // ~3mm bleed around each card for cutting margin
 )
@@ -64,7 +64,7 @@ type colorScheme struct {
 
 // colorMap maps single-letter color identities to their visual scheme.
 var colorMap = map[string]colorScheme{
-	"W": {border: [3]uint8{190, 180, 155}, bg: [3]uint8{252, 250, 245}},  // White: silvery-warm border, ivory bg
+	"W": {border: [3]uint8{190, 180, 155}, bg: [3]uint8{252, 250, 245}}, // White: silvery-warm border, ivory bg
 	"U": {border: [3]uint8{14, 104, 171}, bg: [3]uint8{235, 244, 252}},  // Blue: blue border, light blue bg
 	"B": {border: [3]uint8{50, 40, 50}, bg: [3]uint8{240, 238, 240}},    // Black: near-black border, light gray-purple bg
 	"R": {border: [3]uint8{211, 32, 41}, bg: [3]uint8{250, 240, 238}},   // Red: red border, light pink bg
@@ -88,8 +88,8 @@ func RenderSingle(d deck.Deck, outPath string) error {
 	return pdf.WritePdf(outPath)
 }
 
-// RenderBatch creates a letter-sized PDF with decklist cards arranged in a
-// 3x3 grid. If more than 9 decks are provided, additional pages are added.
+// RenderBatch creates a landscape letter-sized PDF with decklist cards arranged
+// in a 4x2 grid. If more than 8 decks are provided, additional pages are added.
 func RenderBatch(decks []deck.Deck, outPath string) error {
 	pdf := &gopdf.GoPdf{}
 	pdf.Start(gopdf.Config{
