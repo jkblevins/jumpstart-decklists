@@ -2,13 +2,13 @@
 
 A Go CLI tool that takes a text decklist for a Magic: The Gathering Jumpstart pack and generates a printable PDF decklist card with a color-identity-matched border. Each card is sized at 61 x 86mm (slightly smaller than the 63 x 88mm MTG card) so it doesn't extend past the rounded corners of a real card when sleeved together. See [Output](#output) for details.
 
-![Example batch output showing six Jumpstart decklists](docs/example.png)
+![Example batch output showing eight Jumpstart decklists](docs/example.png)
 
 ### Printing and Cutting
 
-Each card is printed with a colored bleed margin extending beyond the card border. This means you don't have to carefully cut along the border lines — cut anywhere in the bleed area and the result still looks clean. The bleed areas of adjacent cards touch with no white gaps to minimize wasted paper.
+Batch PDFs use **landscape orientation** (11" x 8.5") with 8 cards per page. Each card is printed with a colored bleed margin extending beyond the card border — cut anywhere in the bleed area and the result still looks clean.
 
-To use: print the PDF at 100% scale (no "fit to page"), cut out each card along the outer border, and optionally round the corners. Slide the card in front of a real MTG card in a sleeve.
+To use: print the PDF at **100% scale** (no "fit to page") in **landscape orientation**, cut out each card along the outer border, and optionally round the corners. Slide the card in front of a real MTG card in a sleeve.
 
 ## Install
 
@@ -72,7 +72,7 @@ Forest Friends
 4 Forest
 ```
 
-Single deck produces a card-sized PDF. Multiple decks produce a letter-size PDF with a 3x3 grid.
+Single deck produces a card-sized PDF. Multiple decks produce a landscape letter-size PDF with a 4x2 grid (8 cards per page).
 
 ## Output
 
@@ -143,4 +143,4 @@ Within each group, cards are sorted by converted mana cost (ascending), then alp
 
 ## Card Data
 
-Card metadata is fetched from [Scryfall](https://scryfall.com/) and cached locally at `~/.cache/jumpstart-decklists/` for one week. API rate limits are respected (100ms between requests).
+Card metadata is fetched from [Scryfall](https://scryfall.com/) via the `/cards/collection` batch endpoint and cached locally at `~/.cache/jumpstart-decklists/` for one month.

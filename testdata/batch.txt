@@ -101,3 +101,49 @@ Chaos
 1 Fiery Fall
 1 Bituminous Blast
 1 Violent Outburst
+---
+Azorius Senate 1 [W]
+//Creatures (8)
+1 Law-Rune Enforcer
+1 Azorius Arrester
+1 War Screecher
+1 Trusted Pegasus
+1 Lavinia, Foil to Conspiracy
+1 Azorius Justiciar
+1 Portal Manipulator
+1 Enforcer Griffin
+//Enchantments (1)
+1 Curse of Chains
+//Sorceries (2)
+1 Oust
+1 Supreme Verdict
+//Instants (1)
+1 Rally to Battle
+//Lands (8)
+1 Azorius Chancery
+1 Azorius Guildgate
+1 Thriving Heath
+5 Plains
+---
+Azorius Senate 2 [U]
+// Creatures (7)
+1 Owl Familiar
+1 Jeering Homunculus
+1 Cloudkin Seer
+1 Rescuer Sphinx
+1 Portal Manipulator
+1 Suppressor Skyguard
+1 Lavinia of the Tenth
+// Enchantments (1)
+1 Curse of Chains
+// Instants (3)
+1 Depose \/\/ Deploy
+1 Turn to Mist
+1 Code of Constraint
+//Artifacts (1)
+1 Azorius Signet
+//Lands (8)
+1 Azorius Chancery
+1 Azorius Guildgate
+1 Thriving Isle
+5 Island
