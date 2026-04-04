@@ -3,11 +3,11 @@
 package scryfall
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -26,7 +26,8 @@ type Card struct {
 const (
 	baseURL   = "https://api.scryfall.com"
 	userAgent = "jumpstart-decklists/1.0 (MTG Jumpstart decklist formatter)"
-	cacheTTL  = 7 * 24 * time.Hour // 1 week
+	cacheTTL  = 30 * 24 * time.Hour // 1 month
+	batchSize = 75                   // Scryfall /cards/collection max per request
 )
 
 // Client fetches card data from the Scryfall API with caching and rate limiting.
@@ -40,107 +41,184 @@ type Client struct {
 // NewClient creates a Scryfall client with default settings.
 func NewClient(log zerolog.Logger) *Client {
 	return &Client{
-		httpClient: &http.Client{Timeout: 10 * time.Second},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 		cacheDir:   cacheDir(),
 		log:        log.With().Str("component", "scryfall").Logger(),
 	}
 }
 
-// FetchCard fetches a single card by exact name, using the cache when possible.
-// See https://scryfall.com/docs/api/cards/named
-func (c *Client) FetchCard(name string) (*Card, error) {
-	requestURL := fmt.Sprintf("%s/cards/named?exact=%s", baseURL, url.QueryEscape(name))
-	c.log.Debug().Str("card", name).Msg("fetching card")
-	body, err := c.doRequest(requestURL, safeFileName(name))
-	if err != nil {
-		return nil, fmt.Errorf("fetch card %q: %w", name, err)
+// FetchCards looks up multiple cards by exact name. It serves what it can from
+// cache and fetches the rest via Scryfall's /cards/collection endpoint (up to
+// 75 cards per request). Returns a map keyed by card name.
+func (c *Client) FetchCards(names []string) (map[string]*Card, error) {
+	result := make(map[string]*Card, len(names))
+	var uncached []string
+
+	for _, name := range names {
+		if data, ok := readCacheFile(c.cacheDir, safeFileName(name), cacheTTL); ok {
+			var card Card
+			if err := json.Unmarshal(data, &card); err == nil {
+				result[card.Name] = &card
+				c.log.Debug().Str("card", name).Msg("cache hit")
+				continue
+			}
+		}
+		uncached = append(uncached, name)
 	}
 
-	var card Card
-	if err := json.Unmarshal(body, &card); err != nil {
-		return nil, fmt.Errorf("parse card %q: %w", name, err)
+	if len(uncached) == 0 {
+		return result, nil
 	}
-	return &card, nil
-}
-// doRequest performs an HTTP GET with caching, rate limiting, and retry.
-// If cacheKey is non-empty, the response is cached and served from cache
-// on subsequent calls.
-func (c *Client) doRequest(requestURL string, cacheKey string) ([]byte, error) {
-	if cacheKey != "" {
-		if data, ok := readCacheFile(c.cacheDir, cacheKey, cacheTTL); ok {
-			c.log.Debug().Str("cacheKey", cacheKey).Msg("cache hit")
-			return data, nil
+
+	c.log.Info().Int("cached", len(result)).Int("fetching", len(uncached)).Msg("batch fetch from Scryfall")
+
+	for i := 0; i < len(uncached); i += batchSize {
+		end := i + batchSize
+		if end > len(uncached) {
+			end = len(uncached)
+		}
+
+		cards, notFound, err := c.fetchCollection(uncached[i:end])
+		if err != nil {
+			return nil, fmt.Errorf("fetch collection: %w", err)
+		}
+
+		for i := range cards {
+			card := &cards[i]
+			result[card.Name] = card
+			if data, err := json.Marshal(card); err == nil {
+				if werr := writeCacheFile(c.cacheDir, safeFileName(card.Name), data); werr != nil {
+					c.log.Warn().Err(werr).Str("card", card.Name).Msg("failed to write cache")
+				}
+			}
+		}
+
+		for _, name := range notFound {
+			c.log.Warn().Str("card", name).Msg("card not found on Scryfall")
 		}
 	}
 
-	body, err := c.executeWithRetry(requestURL)
+	return result, nil
+}
+
+// collectionResponse is the response from POST /cards/collection.
+type collectionResponse struct {
+	Data     []Card             `json:"data"`
+	NotFound []json.RawMessage  `json:"not_found"`
+}
+
+// fetchCollection calls POST /cards/collection for a batch of card names.
+func (c *Client) fetchCollection(names []string) ([]Card, []string, error) {
+	type identifier struct {
+		Name string `json:"name"`
+	}
+
+	ids := make([]identifier, len(names))
+	for i, name := range names {
+		ids[i] = identifier{Name: name}
+	}
+
+	body, err := json.Marshal(struct {
+		Identifiers []identifier `json:"identifiers"`
+	}{Identifiers: ids})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	respBody, err := c.doRequest("POST", baseURL+"/cards/collection", body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var resp collectionResponse
+	if err := json.Unmarshal(respBody, &resp); err != nil {
+		return nil, nil, fmt.Errorf("parse collection response: %w", err)
+	}
+
+	var notFound []string
+	for _, raw := range resp.NotFound {
+		var id identifier
+		if json.Unmarshal(raw, &id) == nil {
+			notFound = append(notFound, id.Name)
+		}
+	}
+
+	return resp.Data, notFound, nil
+}
+
+// doRequest performs an HTTP request with rate limiting, retry on 429, and
+// caching support. The body parameter is optional (nil for GET requests).
+func (c *Client) doRequest(method, url string, body []byte) ([]byte, error) {
+	respBody, err := c.executeWithRetry(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	return respBody, nil
+}
+
+// executeWithRetry sends an HTTP request with rate limiting.
+// Retries up to 3 times on 429 with exponential backoff.
+func (c *Client) executeWithRetry(method, url string, body []byte) ([]byte, error) {
+	// Rate limit: 1 request per second to Scryfall.
+	if wait := time.Second - time.Since(c.lastReq); wait > 0 {
+		time.Sleep(wait)
+	}
+
+	respBody, status, err := c.sendRequest(method, url, body)
 	if err != nil {
 		return nil, err
 	}
 
-	if cacheKey != "" {
-		if err := writeCacheFile(c.cacheDir, cacheKey, body); err != nil {
-			c.log.Warn().Err(err).Str("cacheKey", cacheKey).Msg("failed to write cache")
-		}
-	}
-
-	return body, nil
-}
-
-// executeWithRetry sends a GET request with shared headers and rate limiting.
-// Retries once on 429 after a 2s delay.
-func (c *Client) executeWithRetry(requestURL string) ([]byte, error) {
-	// Rate limit: 100ms between requests per Scryfall guidelines.
-	if !c.lastReq.IsZero() {
-		if wait := 100*time.Millisecond - time.Since(c.lastReq); wait > 0 {
-			time.Sleep(wait)
-		}
-	}
-
-	body, status, err := c.sendRequest(requestURL)
-	if err != nil {
-		return nil, err
-	}
-
-	if status == http.StatusTooManyRequests {
-		c.log.Warn().Str("url", requestURL).Msg("rate limited (429), retrying in 2s")
-		time.Sleep(2 * time.Second)
-		body, status, err = c.sendRequest(requestURL)
+	backoff := 2 * time.Second
+	for attempt := 0; status == http.StatusTooManyRequests && attempt < 3; attempt++ {
+		c.log.Warn().Dur("backoff", backoff).Msg("rate limited (429), retrying")
+		time.Sleep(backoff)
+		backoff *= 2
+		respBody, status, err = c.sendRequest(method, url, body)
 		if err != nil {
 			return nil, err
 		}
-		if status == http.StatusTooManyRequests {
-			return nil, fmt.Errorf("rate limited for %s after retry", requestURL)
-		}
+	}
+
+	if status == http.StatusTooManyRequests {
+		return nil, fmt.Errorf("rate limited after 3 retries")
 	}
 
 	if status != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status %d for %s", status, requestURL)
+		return nil, fmt.Errorf("unexpected status %d from %s", status, url)
 	}
 
-	return body, nil
+	return respBody, nil
 }
 
-// sendRequest performs a single HTTP GET with standard headers.
-func (c *Client) sendRequest(requestURL string) ([]byte, int, error) {
-	req, err := http.NewRequest("GET", requestURL, nil)
+// sendRequest performs a single HTTP request with standard headers.
+func (c *Client) sendRequest(method, url string, body []byte) ([]byte, int, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
 		return nil, 0, err
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	c.lastReq = time.Now()
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("request failed for %s: %w", requestURL, err)
+		return nil, 0, fmt.Errorf("request failed for %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to read response for %s: %w", requestURL, err)
+		return nil, 0, fmt.Errorf("failed to read response for %s: %w", url, err)
 	}
 
-	return body, resp.StatusCode, nil
+	return respBody, resp.StatusCode, nil
 }
